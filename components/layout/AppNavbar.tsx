@@ -6,6 +6,7 @@ import { signOut } from '@/app/actions/auth';
 import {
   CheckCircle2,
   CalendarDays,
+  LayoutGrid,
   Flame,
   BarChart3,
   Settings,
@@ -27,6 +28,7 @@ export function AppNavbar({ userEmail }: AppNavbarProps) {
 
   const navLinks = [
     { href: '/today', label: 'Today', icon: CalendarDays },
+    { href: '/week', label: 'Week', icon: LayoutGrid },
     { href: '/habits', label: 'Habits', icon: Flame },
     { href: '/stats', label: 'Stats', icon: BarChart3 },
     { href: '/settings', label: 'Settings', icon: Settings },
