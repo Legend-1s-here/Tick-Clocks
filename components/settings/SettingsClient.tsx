@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Profile, UserSettings } from '@/types/database';
-import { updateUserSettings, exportUserData, deleteAccount } from '@/app/actions/settings';
+import { updateUserSettings, exportUserData, deleteAccount, sendTestEmailAction } from '@/app/actions/settings';
+import { THEME_OPTIONS, ThemeId, applyTheme } from '@/components/layout/ThemeToggle';
 import {
   Globe,
   Clock,
@@ -17,6 +18,10 @@ import {
   X,
   FileSpreadsheet,
   FileJson,
+  Palette,
+  Send,
+  ExternalLink,
+  Check,
 } from 'lucide-react';
 
 interface SettingsClientProps {
@@ -65,6 +70,40 @@ export function SettingsClient({ initialProfile, initialSettings }: SettingsClie
 
   // Export State
   const [exporting, setExporting] = useState(false);
+
+  // Theme State
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId>('slate');
+
+  useEffect(() => {
+    const saved = (localStorage.getItem('habitflow-theme') as ThemeId) || 'slate';
+    setSelectedTheme(saved);
+  }, []);
+
+  const handleSelectTheme = (themeId: ThemeId) => {
+    setSelectedTheme(themeId);
+    applyTheme(themeId);
+  };
+
+  // Test Email State
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleSendTestEmail = async () => {
+    setSendingTestEmail(true);
+    setTestEmailResult(null);
+    try {
+      const res = await sendTestEmailAction();
+      if (res.success && res.data) {
+        setTestEmailResult({ success: true, message: res.data.message });
+      } else {
+        setTestEmailResult({ success: false, message: res.error || 'Failed to send test email.' });
+      }
+    } catch {
+      setTestEmailResult({ success: false, message: 'Unexpected network error while testing email.' });
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
 
   // Delete Account Modal State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -347,6 +386,125 @@ export function SettingsClient({ initialProfile, initialSettings }: SettingsClie
                 className="w-5 h-5 accent-indigo-600 rounded cursor-pointer"
               />
             </div>
+          </div>
+        </section>
+
+        {/* Email Testing & Diagnostics Section */}
+        <section className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-bold text-sm">
+              <Send className="w-4 h-4 text-indigo-500" />
+              <span>Email Delivery Diagnostics</span>
+            </div>
+            <a
+              href="/api/test-email-preview"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+            >
+              <span>Preview Template</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Test your transactional email delivery system right now. Dispatches a real sample reminder email to{' '}
+            <strong className="text-zinc-800 dark:text-zinc-200">{initialProfile.email}</strong>.
+          </p>
+
+          <div className="pt-1 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <button
+              type="button"
+              onClick={handleSendTestEmail}
+              disabled={sendingTestEmail}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs disabled:opacity-60 cursor-pointer transition-colors"
+            >
+              {sendingTestEmail ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Sending Test Email...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send Test Email Now</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {testEmailResult && (
+            <div
+              className={`p-3.5 rounded-xl border text-xs leading-relaxed animate-in fade-in duration-200 ${
+                testEmailResult.success
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300'
+              }`}
+            >
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{testEmailResult.message}</span>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Appearance & Themes Section */}
+        <section className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs space-y-4">
+          <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-bold text-sm">
+            <Palette className="w-4 h-4 text-purple-500" />
+            <span>Appearance & Themes</span>
+          </div>
+
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Select a theme that fits your workflow. Switches instantly and syncs across all pages.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+            {THEME_OPTIONS.map((theme) => {
+              const isSelected = selectedTheme === theme.id;
+              return (
+                <button
+                  key={theme.id}
+                  type="button"
+                  onClick={() => handleSelectTheme(theme.id)}
+                  className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    isSelected
+                      ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-slate-50 dark:bg-zinc-800/80 shadow-xs'
+                      : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 shadow-2xs"
+                      style={{
+                        backgroundColor: theme.bgPreview,
+                        borderColor: theme.borderPreview,
+                      }}
+                    >
+                      <div
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: theme.accentPreview }}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                        {theme.name}
+                      </p>
+                      <span className="text-[10px] text-zinc-400 capitalize">
+                        {theme.category} theme
+                      </span>
+                    </div>
+                  </div>
+
+                  {isSelected && (
+                    <div className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </section>
 

@@ -148,3 +148,67 @@ export async function deleteAccount(): Promise<ActionResponse> {
   revalidatePath('/', 'layout');
   redirect('/auth/login?message=Account deleted successfully');
 }
+
+export async function sendTestEmailAction(): Promise<ActionResponse<{ isMock: boolean; message: string; email: string }>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || !user.email) {
+    return { success: false, error: 'You must be signed in to send a test email.' };
+  }
+
+  // 1. Fetch user's habits and tasks for today to make it personalized
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [{ data: habits }, { data: tasks }] = await Promise.all([
+    supabase.from('habits').select('*').eq('user_id', user.id).eq('archived', false).limit(3),
+    supabase.from('tasks').select('*').eq('user_id', user.id).eq('done', false).limit(3),
+  ]);
+
+  const { renderReminderEmailHtml } = await import('@/lib/email/templates');
+  const { sendEmail } = await import('@/lib/email/send');
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const { subject, html } = renderReminderEmailHtml({
+    userEmail: user.email,
+    userId: user.id,
+    dateStr: todayStr,
+    pendingHabits: habits || [],
+    pendingTasks: tasks || [],
+    appUrl,
+  });
+
+  const sendResult = await sendEmail({
+    to: user.email,
+    subject: `[Test] ${subject}`,
+    html,
+  });
+
+  if (!sendResult.success) {
+    return {
+      success: false,
+      error: sendResult.error || 'Failed to dispatch email via Resend.',
+    };
+  }
+
+  if (sendResult.isMock) {
+    return {
+      success: true,
+      data: {
+        isMock: true,
+        email: user.email,
+        message: `Simulation mode active (RESEND_API_KEY is placeholder). The email template rendered with 100% fidelity. To deliver to your actual inbox, add a free API key from resend.com to your .env file!`,
+      },
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      isMock: false,
+      email: user.email,
+      message: `Delivered! A live test email was sent to ${user.email} (Message ID: ${sendResult.id}). Please check your inbox and spam folder.`,
+    },
+  };
+}

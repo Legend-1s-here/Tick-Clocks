@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-:root {
+/* 1. Base / Slate Theme (Default Light) */
+:root, [data-theme="slate"] {
   --background: #f8fafc;
   --foreground: #0f172a;
   --card: #ffffff;
@@ -10,14 +11,48 @@
   --brand-dark: #4338ca;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #f4f4f5;
-    --card: #18181b;
-    --card-foreground: #f4f4f5;
-    --border: #27272a;
-  }
+/* 2. Warm Paper / Notion Editorial Theme */
+[data-theme="warm"] {
+  --background: #fbf9f4;
+  --foreground: #292524;
+  --card: #ffffff;
+  --card-foreground: #292524;
+  --border: #e7e5e4;
+  --brand: #c2410c;
+  --brand-dark: #9a3412;
+}
+
+/* 3. Nordic Sage / Forest Theme */
+[data-theme="sage"] {
+  --background: #f2f5f2;
+  --foreground: #1c2621;
+  --card: #ffffff;
+  --card-foreground: #1c2621;
+  --border: #dbe4dd;
+  --brand: #15803d;
+  --brand-dark: #166534;
+}
+
+/* 4. Linear Charcoal (Modern Dark) */
+[data-theme="dark"] {
+  --background: #121215;
+  --foreground: #f4f4f5;
+  --card: #18181c;
+  --card-foreground: #f4f4f5;
+  --border: #27272e;
+  --brand: #6366f1;
+  --brand-dark: #4f46e5;
+}
+
+/* 5. OLED Midnight (True Pitch Black) */
+[data-theme="midnight"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0d;
+  --card-foreground: #ffffff;
+  --border: #1e1e24;
+  --brand: #818cf8;
+  --brand-dark: #6366f1;
 }
 
 html {
@@ -25,12 +60,56 @@ html {
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Warm theme surface styling */
+[data-theme="warm"] body {
+  background-color: #fbf9f4 !important;
+}
+[data-theme="warm"] .bg-slate-50,
+[data-theme="warm"] .bg-zinc-50 {
+  background-color: #fbf9f4 !important;
+}
+[data-theme="warm"] .border-slate-200,
+[data-theme="warm"] .border-zinc-200 {
+  border-color: #e7e5e4 !important;
+}
+
+/* Sage theme surface styling */
+[data-theme="sage"] body {
+  background-color: #f2f5f2 !important;
+}
+[data-theme="sage"] .bg-slate-50,
+[data-theme="sage"] .bg-zinc-50 {
+  background-color: #f2f5f2 !important;
+}
+[data-theme="sage"] .border-slate-200,
+[data-theme="sage"] .border-zinc-200 {
+  border-color: #dbe4dd !important;
+}
+
+/* Midnight theme surface styling */
+[data-theme="midnight"] body {
+  background-color: #000000 !important;
+}
+[data-theme="midnight"] .dark\:bg-zinc-950,
+[data-theme="midnight"] .bg-zinc-950 {
+  background-color: #000000 !important;
+}
+[data-theme="midnight"] .dark\:bg-zinc-900,
+[data-theme="midnight"] .bg-zinc-900 {
+  background-color: #0c0c0f !important;
+}
+[data-theme="midnight"] .dark\:border-zinc-800,
+[data-theme="midnight"] .border-zinc-800 {
+  border-color: #1f1f26 !important;
 }
 
 /* Smooth scrollbar in Webkit browsers */
@@ -49,7 +128,7 @@ body {
   background: #3f3f46;
 }
 
-/* Line clamp utilities (Tailwind v4 may not bundle these by default) */
+/* Line clamp utilities */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;

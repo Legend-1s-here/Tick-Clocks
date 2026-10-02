@@ -57,8 +57,9 @@ export default async function RootLayout({
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('theme');
-                  if (theme === 'dark') {
+                  var theme = localStorage.getItem('habitflow-theme') || 'slate';
+                  document.documentElement.setAttribute('data-theme', theme);
+                  if (theme === 'dark' || theme === 'midnight') {
                     document.documentElement.classList.add('dark');
                   } else {
                     document.documentElement.classList.remove('dark');

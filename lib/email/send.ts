@@ -6,14 +6,14 @@ export interface SendEmailPayload {
   html: string;
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailPayload): Promise<{ success: boolean; id?: string; error?: string }> {
+export async function sendEmail({ to, subject, html }: SendEmailPayload): Promise<{ success: boolean; id?: string; error?: string; isMock?: boolean }> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || 'HabitFlow <onboarding@resend.dev>';
 
   // Fallback for development/testing when no live API key is configured
   if (!apiKey || apiKey.includes('placeholder') || apiKey.startsWith('re_123')) {
     console.log(`[Email Mock] To: ${to} | Subject: ${subject}`);
-    return { success: true, id: `mock-${Date.now()}` };
+    return { success: true, id: `mock-${Date.now()}`, isMock: true };
   }
 
   try {
