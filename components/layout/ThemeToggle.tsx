@@ -3,11 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Palette, Check } from 'lucide-react';
 
-export type ThemeId = 'slate' | 'warm' | 'sage' | 'dark' | 'midnight';
+export type ThemeId = 'slate' | 'warm' | 'github' | 'sage' | 'dark' | 'midnight';
 
 export interface ThemeOption {
   id: ThemeId;
   name: string;
+  tagline: string;
   category: 'Light' | 'Dark';
   bgPreview: string;
   accentPreview: string;
@@ -18,7 +19,8 @@ export interface ThemeOption {
 export const THEME_OPTIONS: ThemeOption[] = [
   {
     id: 'slate',
-    name: 'Slate Minimal',
+    name: 'Linear Snow',
+    tagline: 'Crisp porcelain & modern indigo',
     category: 'Light',
     bgPreview: '#f8fafc',
     accentPreview: '#4f46e5',
@@ -27,38 +29,52 @@ export const THEME_OPTIONS: ThemeOption[] = [
   },
   {
     id: 'warm',
-    name: 'Warm Paper',
+    name: 'Notion Paper',
+    tagline: 'Warm bone & amber editorial',
     category: 'Light',
-    bgPreview: '#fbf9f4',
-    accentPreview: '#c2410c',
-    borderPreview: '#e7e5e4',
+    bgPreview: '#f7f6f3',
+    accentPreview: '#b45309',
+    borderPreview: '#e6e3da',
+    isDark: false,
+  },
+  {
+    id: 'github',
+    name: 'GitHub Primer',
+    tagline: 'Structured cool gray & classic blue',
+    category: 'Light',
+    bgPreview: '#f6f8fa',
+    accentPreview: '#0969da',
+    borderPreview: '#d0d7de',
     isDark: false,
   },
   {
     id: 'sage',
-    name: 'Nordic Sage',
+    name: 'Nordic Forest',
+    tagline: 'Eucalyptus mist & rich pine',
     category: 'Light',
     bgPreview: '#f2f5f2',
     accentPreview: '#15803d',
-    borderPreview: '#dbe4dd',
+    borderPreview: '#d4dfd6',
     isDark: false,
   },
   {
     id: 'dark',
     name: 'Linear Charcoal',
+    tagline: 'Modern graphite & electric violet',
     category: 'Dark',
-    bgPreview: '#121215',
+    bgPreview: '#0f1012',
     accentPreview: '#6366f1',
-    borderPreview: '#27272e',
+    borderPreview: '#282a30',
     isDark: true,
   },
   {
     id: 'midnight',
     name: 'OLED Midnight',
+    tagline: 'Pure pitch-black & high contrast',
     category: 'Dark',
     bgPreview: '#000000',
     accentPreview: '#818cf8',
-    borderPreview: '#1e1e24',
+    borderPreview: '#1e2026',
     isDark: true,
   },
 ];
@@ -135,9 +151,12 @@ export function ThemeToggle() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 p-2 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
-          <div className="px-2.5 py-1.5 mb-1 text-[11px] font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
-            Choose Theme
+        <div className="absolute right-0 mt-2 w-64 p-2 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+          <div className="px-2.5 py-1.5 mb-1 flex items-center justify-between text-[11px] font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
+            <span>Color Palette</span>
+            <span className="text-[10px] normal-case font-normal text-slate-400">
+              {activeThemeObj.name}
+            </span>
           </div>
 
           <div className="space-y-1">
@@ -150,12 +169,12 @@ export function ThemeToggle() {
                   onClick={() => selectTheme(theme.id)}
                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-semibold'
+                      ? 'bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-semibold shadow-2xs'
                       : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800/60 hover:text-slate-900 dark:hover:text-zinc-200'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    {/* Swatch */}
+                  <div className="flex items-center gap-2.5 min-w-0 text-left">
+                    {/* Swatch circle preview */}
                     <div
                       className="w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 shadow-2xs"
                       style={{
@@ -168,10 +187,15 @@ export function ThemeToggle() {
                         style={{ backgroundColor: theme.accentPreview }}
                       />
                     </div>
-                    <span>{theme.name}</span>
+                    <div className="truncate">
+                      <p className="truncate text-xs">{theme.name}</p>
+                      <p className="text-[10px] text-slate-400 font-normal truncate">
+                        {theme.tagline}
+                      </p>
+                    </div>
                   </div>
 
-                  {isSelected && <Check className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-indigo-500 shrink-0 ml-2" />}
                 </button>
               );
             })}

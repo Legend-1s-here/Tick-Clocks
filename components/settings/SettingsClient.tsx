@@ -491,8 +491,8 @@ export function SettingsClient({ initialProfile, initialSettings }: SettingsClie
                       <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
                         {theme.name}
                       </p>
-                      <span className="text-[10px] text-zinc-400 capitalize">
-                        {theme.category} theme
+                      <span className="text-[10px] text-zinc-400">
+                        {theme.tagline}
                       </span>
                     </div>
                   </div>
