@@ -38,11 +38,11 @@ export function ProgressRing({ completed, total }: ProgressRingProps) {
   const strokeDashoffset = circumference - (circumference * percentage) / 100;
 
   return (
-    <div className="relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-200/50 dark:border-indigo-900/40">
+    <div className="relative overflow-hidden p-5 sm:p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 shadow-xs">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
         {/* Info */}
         <div className="text-center sm:text-left">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-zinc-800 text-[11px] font-semibold text-slate-700 dark:text-zinc-300 mb-2">
             {percentage === 100 ? (
               <>
                 <Sparkles className="w-3 h-3 text-amber-500" />
@@ -55,7 +55,7 @@ export function ProgressRing({ completed, total }: ProgressRingProps) {
               </>
             )}
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">
             {completed} of {total} completed
           </h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">

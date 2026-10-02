@@ -11,8 +11,9 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Sparkles,
 } from 'lucide-react';
+
+import { ThemeToggle } from './ThemeToggle';
 
 interface AppNavbarProps {
   userEmail?: string | null;
@@ -35,19 +36,16 @@ export function AppNavbar({ userEmail }: AppNavbarProps) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 dark:bg-zinc-950/80 border-b border-zinc-200/80 dark:border-zinc-800">
+    <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/95 dark:bg-zinc-950/90 border-b border-slate-200/90 dark:border-zinc-800/80">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Brand */}
         <Link href={userEmail ? '/today' : '/'} className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm shadow-indigo-600/20 group-hover:bg-indigo-700 transition-colors">
+            <CheckCircle2 className="w-4.5 h-4.5" />
           </div>
           <div>
-            <span className="font-bold text-base tracking-tight text-zinc-900 dark:text-zinc-50 flex items-center gap-1.5">
+            <span className="font-semibold text-base tracking-tight text-slate-900 dark:text-zinc-50">
               HabitFlow
-              <span className="text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-                PRO
-              </span>
             </span>
           </div>
         </Link>
@@ -74,32 +72,35 @@ export function AppNavbar({ userEmail }: AppNavbarProps) {
               );
             })}
 
-            <div className="h-4 w-[1px] bg-zinc-200 dark:bg-zinc-800 mx-1 sm:mx-2" />
+            <div className="h-4 w-[1px] bg-slate-200 dark:bg-zinc-800 mx-1" />
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
 
             {/* Logout button */}
             <form action={signOut}>
               <button
                 type="submit"
                 title="Sign out"
-                className="p-2 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
               </button>
             </form>
           </nav>
         ) : (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               href="/auth/login"
-              className="text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white px-3 py-1.5"
+              className="text-xs font-medium text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white px-3 py-1.5"
             >
               Sign in
             </Link>
             <Link
               href="/auth/register"
-              className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3.5 py-1.5 rounded-lg transition-colors shadow-xs flex items-center gap-1"
+              className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3.5 py-1.5 rounded-lg transition-colors shadow-xs"
             >
-              <Sparkles className="w-3 h-3" />
               Get Started
             </Link>
           </div>
