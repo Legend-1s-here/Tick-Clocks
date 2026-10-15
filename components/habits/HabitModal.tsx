@@ -5,7 +5,7 @@ import { Habit } from '@/types/database';
 import { HabitInput } from '@/lib/validations/habits';
 import { createHabit, updateHabit } from '@/app/actions/habits';
 import { HABIT_COLORS, HABIT_CATEGORIES } from '@/lib/utils';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Mail } from 'lucide-react';
 
 interface HabitModalProps {
   isOpen: boolean;
@@ -32,6 +32,7 @@ export function HabitModal({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
   const [frequencyType, setFrequencyType] = useState<'daily' | 'weekdays' | 'weekly_target'>('daily');
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]);
   const [targetPerWeek, setTargetPerWeek] = useState(3);
+  const [emailReminder, setEmailReminder] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +45,7 @@ export function HabitModal({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
       setFrequencyType(habitToEdit.frequency_type);
       setDaysOfWeek(habitToEdit.days_of_week || [0, 1, 2, 3, 4, 5, 6]);
       setTargetPerWeek(habitToEdit.target_per_week || 3);
+      setEmailReminder(habitToEdit.email_reminder !== false);
     } else {
       setTitle('');
       setDescription('');
@@ -52,6 +54,7 @@ export function HabitModal({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
       setFrequencyType('daily');
       setDaysOfWeek([1, 2, 3, 4, 5]);
       setTargetPerWeek(3);
+      setEmailReminder(true);
     }
     setError(null);
   }, [habitToEdit, isOpen]);
@@ -81,6 +84,7 @@ export function HabitModal({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
       frequency_type: frequencyType,
       days_of_week: frequencyType === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : daysOfWeek,
       target_per_week: targetPerWeek,
+      email_reminder: emailReminder,
     };
 
     let res;
@@ -269,6 +273,34 @@ export function HabitModal({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Email Reminder Toggle */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Email Reminder</div>
+                <div className="text-[11px] text-zinc-500">Include in scheduled reminder emails</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={emailReminder}
+              onClick={() => setEmailReminder(!emailReminder)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                emailReminder ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-750'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  emailReminder ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
 
           {/* Footer Submit */}

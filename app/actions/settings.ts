@@ -162,7 +162,7 @@ export async function sendTestEmailAction(): Promise<ActionResponse<{ isMock: bo
   // 1. Fetch user's habits and tasks for today to make it personalized
   const todayStr = new Date().toISOString().split('T')[0];
   const [{ data: habits }, { data: tasks }] = await Promise.all([
-    supabase.from('habits').select('*').eq('user_id', user.id).eq('archived', false).limit(3),
+    supabase.from('habits').select('*').eq('user_id', user.id).eq('archived', false).neq('email_reminder', false).limit(3),
     supabase.from('tasks').select('*').eq('user_id', user.id).eq('done', false).neq('email_reminder', false).limit(3),
   ]);
 

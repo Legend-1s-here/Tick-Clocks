@@ -37,6 +37,7 @@ export async function createHabit(input: HabitInput): Promise<ActionResponse> {
     frequency_type: validated.data.frequency_type,
     days_of_week: validated.data.days_of_week,
     target_per_week: validated.data.target_per_week,
+    email_reminder: validated.data.email_reminder ?? true,
     archived: false,
   });
 
@@ -46,6 +47,7 @@ export async function createHabit(input: HabitInput): Promise<ActionResponse> {
 
   revalidatePath('/today');
   revalidatePath('/habits');
+  revalidatePath('/week');
   revalidatePath('/stats');
   return { success: true };
 }
@@ -78,6 +80,7 @@ export async function updateHabit(habitId: string, input: HabitInput): Promise<A
       frequency_type: validated.data.frequency_type,
       days_of_week: validated.data.days_of_week,
       target_per_week: validated.data.target_per_week,
+      email_reminder: validated.data.email_reminder ?? true,
     })
     .eq('id', habitId)
     .eq('user_id', user.id);
@@ -88,6 +91,7 @@ export async function updateHabit(habitId: string, input: HabitInput): Promise<A
 
   revalidatePath('/today');
   revalidatePath('/habits');
+  revalidatePath('/week');
   revalidatePath('/stats');
   return { success: true };
 }

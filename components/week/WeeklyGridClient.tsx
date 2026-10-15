@@ -6,7 +6,7 @@ import { format, startOfWeek, addDays, addWeeks, isToday, isFuture } from 'date-
 import { Habit, HabitLog } from '@/types/database';
 import { toggleHabitLog } from '@/app/actions/habits';
 import { isHabitScheduledOnDate } from '@/lib/logic/streaks';
-import { ChevronLeft, ChevronRight, Check, Loader2, Flame, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Loader2, Flame, Plus, Mail, Edit2 } from 'lucide-react';
 import { HabitModal } from '@/components/habits/HabitModal';
 
 interface WeeklyGridClientProps {
@@ -23,6 +23,7 @@ export function WeeklyGridClient({ initialHabits, initialLogs }: WeeklyGridClien
   const [logs, setLogs] = useState<HabitLog[]>(initialLogs);
   const [loadingCell, setLoadingCell] = useState<string | null>(null); // "habitId:dateStr"
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
+  const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
 
   // Compute the 7 days of the current viewed week (Mon–Sun)
   const weekDays = useMemo(() => {
@@ -146,7 +147,10 @@ export function WeeklyGridClient({ initialHabits, initialLogs }: WeeklyGridClien
 
           <button
             type="button"
-            onClick={() => setIsHabitModalOpen(true)}
+            onClick={() => {
+              setHabitToEdit(null);
+              setIsHabitModalOpen(true);
+            }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -215,19 +219,44 @@ export function WeeklyGridClient({ initialHabits, initialLogs }: WeeklyGridClien
                   >
                     {/* Habit Name */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: habit.color || '#6366f1' }}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
-                            {habit.title}
-                          </p>
-                          <p className="text-[10px] text-zinc-400 uppercase tracking-wide">
-                            {habit.category}
-                          </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: habit.color || '#6366f1' }}
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                                {habit.title}
+                              </p>
+                              {habit.email_reminder !== false && (
+                                <span
+                                  title="Email reminders enabled for this habit"
+                                  className="inline-flex items-center text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/50 px-1 py-0.5 rounded text-[9px]"
+                                >
+                                  <Mail className="w-2.5 h-2.5" />
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-400 uppercase tracking-wide">
+                              {habit.category}
+                            </p>
+                          </div>
                         </div>
+
+                        {/* Quick Edit button visible on hover */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHabitToEdit(habit);
+                            setIsHabitModalOpen(true);
+                          }}
+                          title="Edit habit settings and email reminders"
+                          className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity shrink-0 cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
 
@@ -362,11 +391,21 @@ export function WeeklyGridClient({ initialHabits, initialLogs }: WeeklyGridClien
           <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
           <span>Today</span>
         </div>
+        <div className="flex items-center gap-1.5">
+          <div className="p-0.5 rounded bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/50 text-indigo-500">
+            <Mail className="w-2.5 h-2.5" />
+          </div>
+          <span>Email reminder</span>
+        </div>
       </div>
 
       <HabitModal
         isOpen={isHabitModalOpen}
-        onClose={() => setIsHabitModalOpen(false)}
+        habitToEdit={habitToEdit}
+        onClose={() => {
+          setIsHabitModalOpen(false);
+          setHabitToEdit(null);
+        }}
         onSuccess={() => router.refresh()}
       />
     </div>

@@ -90,12 +90,13 @@ async function handleRemindersCron(request: Request) {
           continue;
         }
 
-        // Fetch active habits
+        // Fetch active habits where email reminder is enabled
         const { data: habits } = await supabase
           .from('habits')
           .select('*')
           .eq('user_id', profile.id)
-          .eq('archived', false);
+          .eq('archived', false)
+          .neq('email_reminder', false);
 
         // Filter habits scheduled for today
         const scheduledToday = (habits || []).filter((h) =>

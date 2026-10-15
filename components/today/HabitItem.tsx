@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Habit } from '@/types/database';
-import { Check, Flame, MoreVertical, Edit2, History, Archive, Loader2 } from 'lucide-react';
+import { Check, Flame, MoreVertical, Edit2, History, Archive, Loader2, Mail } from 'lucide-react';
 
 interface HabitItemProps {
   habit: Habit;
@@ -89,6 +89,16 @@ export function HabitItem({
             <span className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-medium">
               {habit.category}
             </span>
+
+            {/* Email reminder indicator */}
+            {habit.email_reminder !== false && (
+              <span
+                title="Email reminders enabled for this habit"
+                className="inline-flex items-center text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/50 px-1.5 py-0.5 rounded text-[10px]"
+              >
+                <Mail className="w-2.5 h-2.5" />
+              </span>
+            )}
           </div>
 
           {habit.description && (

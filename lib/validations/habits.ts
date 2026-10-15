@@ -8,6 +8,7 @@ export const habitSchema = z.object({
   frequency_type: z.enum(['daily', 'weekdays', 'weekly_target']),
   days_of_week: z.array(z.number().min(0).max(6)).default([0, 1, 2, 3, 4, 5, 6]),
   target_per_week: z.number().int().min(1).max(7).default(1),
+  email_reminder: z.boolean().default(true),
 });
 
 export type HabitInput = z.infer<typeof habitSchema>;

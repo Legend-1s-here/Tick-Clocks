@@ -16,6 +16,7 @@ import {
   Calendar,
   History,
   Filter,
+  Mail,
 } from 'lucide-react';
 
 interface HabitsManagerProps {
@@ -191,9 +192,19 @@ export function HabitsManager({ initialHabits, initialLogs }: HabitsManagerProps
                     </h3>
                   </div>
 
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 shrink-0">
-                    {habit.category}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {habit.email_reminder !== false && (
+                      <span
+                        title="Email reminders enabled for this habit"
+                        className="inline-flex items-center text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/50 px-1.5 py-0.5 rounded text-[10px]"
+                      >
+                        <Mail className="w-2.5 h-2.5" />
+                      </span>
+                    )}
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                      {habit.category}
+                    </span>
+                  </div>
                 </div>
 
                 {habit.description && (

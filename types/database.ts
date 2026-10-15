@@ -29,6 +29,7 @@ export type Habit = {
   frequency_type: FrequencyType;
   days_of_week: number[]; // 0=Sunday, 1=Monday, ..., 6=Saturday
   target_per_week: number;
+  email_reminder: boolean;
   archived: boolean;
   created_at: string;
 };
@@ -130,6 +131,7 @@ export type Database = {
           frequency_type: FrequencyType;
           days_of_week: number[];
           target_per_week: number;
+          email_reminder: boolean;
           archived: boolean;
           created_at: string;
         };
@@ -143,6 +145,7 @@ export type Database = {
           frequency_type: FrequencyType;
           days_of_week?: number[];
           target_per_week?: number;
+          email_reminder?: boolean;
           archived?: boolean;
           created_at?: string;
         };
@@ -156,6 +159,7 @@ export type Database = {
           frequency_type?: FrequencyType;
           days_of_week?: number[];
           target_per_week?: number;
+          email_reminder?: boolean;
           archived?: boolean;
           created_at?: string;
         };
