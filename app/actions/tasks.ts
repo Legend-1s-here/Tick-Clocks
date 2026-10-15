@@ -29,6 +29,7 @@ export async function createTask(input: TaskInput): Promise<ActionResponse> {
     due_date: validated.data.due_date,
     due_time: validated.data.due_time || null,
     priority: validated.data.priority,
+    email_reminder: validated.data.email_reminder ?? true,
     done: false,
   });
 
@@ -65,6 +66,7 @@ export async function updateTask(taskId: string, input: TaskInput): Promise<Acti
       due_date: validated.data.due_date,
       due_time: validated.data.due_time || null,
       priority: validated.data.priority,
+      email_reminder: validated.data.email_reminder ?? true,
     })
     .eq('id', taskId)
     .eq('user_id', user.id);

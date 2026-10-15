@@ -97,12 +97,13 @@ export async function POST(request: Request) {
         isHabitScheduledOnDate(h, localDateObj)
       );
 
-      // Fetch tasks due today
+      // Fetch tasks due today where email reminder is enabled
       const { data: tasks } = await supabase
         .from('tasks')
         .select('*')
         .eq('user_id', profile.id)
-        .eq('due_date', localDate);
+        .eq('due_date', localDate)
+        .neq('email_reminder', false);
 
       // If user has anything scheduled, send the morning plan
       if (scheduledHabits.length > 0 || (tasks && tasks.length > 0)) {

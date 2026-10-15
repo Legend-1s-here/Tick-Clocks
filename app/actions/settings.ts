@@ -163,7 +163,7 @@ export async function sendTestEmailAction(): Promise<ActionResponse<{ isMock: bo
   const todayStr = new Date().toISOString().split('T')[0];
   const [{ data: habits }, { data: tasks }] = await Promise.all([
     supabase.from('habits').select('*').eq('user_id', user.id).eq('archived', false).limit(3),
-    supabase.from('tasks').select('*').eq('user_id', user.id).eq('done', false).limit(3),
+    supabase.from('tasks').select('*').eq('user_id', user.id).eq('done', false).neq('email_reminder', false).limit(3),
   ]);
 
   const { renderReminderEmailHtml } = await import('@/lib/email/templates');

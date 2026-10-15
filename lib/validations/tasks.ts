@@ -9,6 +9,7 @@ export const taskSchema = z.object({
     .optional()
     .nullable(),
   priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  email_reminder: z.boolean().default(true),
 });
 
 export type TaskInput = z.infer<typeof taskSchema>;

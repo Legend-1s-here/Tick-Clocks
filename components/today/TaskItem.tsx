@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Task } from '@/types/database';
-import { Check, Clock, Trash2, Edit2, Loader2, Flag } from 'lucide-react';
+import { Check, Clock, Trash2, Edit2, Loader2, Flag, Mail } from 'lucide-react';
 
 interface TaskItemProps {
   task: Task;
@@ -96,6 +96,16 @@ export function TaskItem({ task, onToggle, onEdit, onDelete, isFocused }: TaskIt
           <Flag className="w-2.5 h-2.5" />
           <span>{task.priority}</span>
         </div>
+
+        {/* Email reminder indicator */}
+        {task.email_reminder !== false && (
+          <div
+            title="Email reminders enabled for this task"
+            className="flex items-center text-indigo-500 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/50 px-1.5 py-0.5 rounded-md"
+          >
+            <Mail className="w-2.5 h-2.5" />
+          </div>
+        )}
 
         {/* Edit and Delete Buttons — always visible on mobile, hover-reveal on desktop */}
         <div className="flex items-center sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 sm:transition-opacity">

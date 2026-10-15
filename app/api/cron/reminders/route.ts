@@ -112,13 +112,14 @@ async function handleRemindersCron(request: Request) {
         const completedHabitIds = new Set((todayLogs || []).map((l) => l.habit_id));
         const pendingHabits = scheduledToday.filter((h) => !completedHabitIds.has(h.id));
 
-        // Fetch pending tasks for today
+        // Fetch pending tasks for today where email reminder is enabled
         const { data: pendingTasks } = await supabase
           .from('tasks')
           .select('*')
           .eq('user_id', profile.id)
           .eq('due_date', localDate)
-          .eq('done', false);
+          .eq('done', false)
+          .neq('email_reminder', false);
 
         const tasksLeft = pendingTasks || [];
 

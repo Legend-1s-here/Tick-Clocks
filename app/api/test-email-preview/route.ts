@@ -44,6 +44,7 @@ export async function GET(request: Request) {
       due_date: new Date().toISOString().split('T')[0],
       due_time: '18:00',
       priority: 'high',
+      email_reminder: true,
       done: false,
       done_at: null,
       created_at: new Date().toISOString(),

@@ -48,6 +48,7 @@ export type Task = {
   due_date: string; // YYYY-MM-DD
   due_time: string | null; // HH:mm
   priority: TaskPriority;
+  email_reminder: boolean;
   done: boolean;
   done_at: string | null;
   created_at: string;
@@ -192,6 +193,7 @@ export type Database = {
           due_date: string;
           due_time: string | null;
           priority: TaskPriority;
+          email_reminder: boolean;
           done: boolean;
           done_at: string | null;
           created_at: string;
@@ -203,6 +205,7 @@ export type Database = {
           due_date: string;
           due_time?: string | null;
           priority?: TaskPriority;
+          email_reminder?: boolean;
           done?: boolean;
           done_at?: string | null;
           created_at?: string;
@@ -214,6 +217,7 @@ export type Database = {
           due_date?: string;
           due_time?: string | null;
           priority?: TaskPriority;
+          email_reminder?: boolean;
           done?: boolean;
           done_at?: string | null;
           created_at?: string;

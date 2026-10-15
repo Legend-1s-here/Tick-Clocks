@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Task, TaskPriority } from '@/types/database';
 import { TaskInput } from '@/lib/validations/tasks';
 import { createTask, updateTask } from '@/app/actions/tasks';
-import { X, Loader2, Calendar, Clock, Flag } from 'lucide-react';
+import { X, Loader2, Calendar, Clock, Flag, Mail } from 'lucide-react';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -19,6 +19,7 @@ export function TaskModal({ isOpen, onClose, defaultDate, taskToEdit, onSuccess 
   const [dueDate, setDueDate] = useState(defaultDate);
   const [dueTime, setDueTime] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [emailReminder, setEmailReminder] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,11 +29,13 @@ export function TaskModal({ isOpen, onClose, defaultDate, taskToEdit, onSuccess 
       setDueDate(taskToEdit.due_date);
       setDueTime(taskToEdit.due_time || '');
       setPriority(taskToEdit.priority);
+      setEmailReminder(taskToEdit.email_reminder !== false);
     } else {
       setTitle('');
       setDueDate(defaultDate);
       setDueTime('');
       setPriority('medium');
+      setEmailReminder(true);
     }
     setError(null);
   }, [taskToEdit, defaultDate, isOpen]);
@@ -49,6 +52,7 @@ export function TaskModal({ isOpen, onClose, defaultDate, taskToEdit, onSuccess 
       due_date: dueDate,
       due_time: dueTime ? dueTime : null,
       priority,
+      email_reminder: emailReminder,
     };
 
     let res;
@@ -163,6 +167,34 @@ export function TaskModal({ isOpen, onClose, defaultDate, taskToEdit, onSuccess 
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Email Reminder Toggle */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Email Reminder</div>
+                <div className="text-[11px] text-zinc-500">Include in scheduled reminder emails</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={emailReminder}
+              onClick={() => setEmailReminder(!emailReminder)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                emailReminder ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-750'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  emailReminder ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
 
           {/* Footer Submit */}
