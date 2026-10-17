@@ -11,9 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Reminders Endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL || 'https://tick-clocks.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${{ secrets.APP_URL }}/api/cron/reminders" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET is missing! Please add CRON_SECRET in GitHub repo Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+          BASE_URL="${APP_URL%/}"
+          TARGET_URL="${BASE_URL}/api/cron/reminders"
+          echo "Triggering $TARGET_URL ..."
+
+          RESPONSE=$(curl -s -S -w "\nHTTP_STATUS:%{http_code}" -X POST "$TARGET_URL" \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json")
 
           HTTP_BODY=$(echo "$RESPONSE" | sed -e '$d')
