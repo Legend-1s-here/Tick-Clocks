@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UnifiedItem } from './KanbanBoardView';
+import { UnifiedItem, BoardColumnId } from './KanbanBoardView';
 import {
   X,
   Check,
@@ -23,6 +23,7 @@ interface NotionPeekModalProps {
   onEditHabit: (item: UnifiedItem) => void;
   onEditTask: (item: UnifiedItem) => void;
   onDeleteTask: (taskId: string) => void;
+  onMoveItem?: (itemId: string, newStatus: BoardColumnId) => void;
 }
 
 export function NotionPeekModal({
@@ -34,6 +35,7 @@ export function NotionPeekModal({
   onEditHabit,
   onEditTask,
   onDeleteTask,
+  onMoveItem,
 }: NotionPeekModalProps) {
   const [noteContent, setNoteContent] = useState('');
 
@@ -148,21 +150,34 @@ export function NotionPeekModal({
 
           {/* Notion Properties Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-zinc-50/70 dark:bg-zinc-900/40 border border-zinc-200/80 dark:border-zinc-800/80 text-xs">
-            {/* Status */}
+            {/* Status with Notion 4-column dropdown */}
             <div className="flex items-center gap-2">
               <span className="w-24 text-zinc-400 flex items-center gap-1.5 font-medium">
                 <Check className="w-3.5 h-3.5" />
                 <span>Status</span>
               </span>
-              <span
-                className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${
-                  item.done
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                }`}
-              >
-                {item.done ? 'Completed' : 'To Do'}
-              </span>
+              {onMoveItem ? (
+                <select
+                  value={item.status || (item.done ? 'done' : 'not_started')}
+                  onChange={(e) => onMoveItem(item.id, e.target.value as BoardColumnId)}
+                  className="px-2 py-1 rounded-md font-semibold text-[11px] border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 cursor-pointer focus:outline-none"
+                >
+                  <option value="not_started">● Not started</option>
+                  <option value="on_hold">● Dropped / On hold</option>
+                  <option value="in_progress">● In progress</option>
+                  <option value="done">● Done</option>
+                </select>
+              ) : (
+                <span
+                  className={`px-2 py-0.5 rounded-md font-semibold text-[11px] ${
+                    item.done
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      : 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-300'
+                  }`}
+                >
+                  {item.done ? 'Done' : 'Not started'}
+                </span>
+              )}
             </div>
 
             {/* Type */}

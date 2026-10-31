@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Habit, HabitLog, Task } from '@/types/database';
 import { toggleHabitLog, toggleArchiveHabit } from '@/app/actions/habits';
-import { toggleTaskDone, deleteTask, checkAndRolloverTasks } from '@/app/actions/tasks';
+import { toggleTaskDone, deleteTask, checkAndRolloverTasks, createTask } from '@/app/actions/tasks';
 import { calculateStreakStats, isHabitScheduledOnDate } from '@/lib/logic/streaks';
 import { ProgressRing } from './ProgressRing';
 import { HabitItem } from './HabitItem';
@@ -26,7 +26,7 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import { ViewSwitcher, ViewMode, FilterType, BoardGroupBy } from '@/components/views/ViewSwitcher';
-import { KanbanBoardView, UnifiedItem } from '@/components/views/KanbanBoardView';
+import { KanbanBoardView, UnifiedItem, BoardColumnId } from '@/components/views/KanbanBoardView';
 import { CalendarView } from '@/components/views/CalendarView';
 import { DatabaseTableView } from '@/components/views/DatabaseTableView';
 import { NotionPageHeader } from '@/components/views/NotionPageHeader';
@@ -92,16 +92,21 @@ export function TodayClient({
   const [isBackfillOpen, setIsBackfillOpen] = useState(false);
   const [backfillHabit, setBackfillHabit] = useState<Habit | null>(null);
 
-  // Notion-style Multi-View state
-  const [activeView, setActiveView] = useState<ViewMode>('list');
+  // Notion-style Multi-View state (Defaults to 4-column Notion Board view)
+  const [activeView, setActiveView] = useState<ViewMode>('board');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [boardGroupBy, setBoardGroupBy] = useState<BoardGroupBy>('status');
   const [peekItem, setPeekItem] = useState<UnifiedItem | null>(null);
   const [isPeekOpen, setIsPeekOpen] = useState(false);
+  const [itemStatuses, setItemStatuses] = useState<Record<string, BoardColumnId>>({});
 
   useEffect(() => {
     try {
+      const savedStatuses = localStorage.getItem('habitflow-item-statuses');
+      if (savedStatuses) {
+        setItemStatuses(JSON.parse(savedStatuses));
+      }
       const saved = localStorage.getItem('habitflow-active-view') as ViewMode | null;
       if (saved && ['list', 'board', 'calendar', 'table'].includes(saved)) {
         setActiveView(saved);
@@ -231,6 +236,7 @@ export function TodayClient({
         category: h.category,
         color: h.color,
         done: isDone,
+        status: isDone ? 'done' : (itemStatuses[h.id] || 'not_started'),
         streak: streaksMap.get(h.id) || 0,
         email_reminder: h.email_reminder !== false,
         originalHabit: h,
@@ -245,6 +251,7 @@ export function TodayClient({
       due_time: t.due_time,
       priority: t.priority,
       done: t.done,
+      status: t.done ? 'done' : (itemStatuses[t.id] || 'not_started'),
       email_reminder: t.email_reminder !== false,
       originalTask: t,
     }));
@@ -272,7 +279,7 @@ export function TodayClient({
     }
 
     return all;
-  }, [scheduledHabits, scheduledTasks, completedHabitIdSet, streaksMap, searchQuery, filterType]);
+  }, [scheduledHabits, scheduledTasks, completedHabitIdSet, streaksMap, searchQuery, filterType, itemStatuses]);
 
   // Optimistic Toggle Task Done
   const handleToggleTask = useCallback(
@@ -306,6 +313,84 @@ export function TodayClient({
       router.refresh();
     },
     [router]
+  );
+
+  // Move item between Notion 4 columns
+  const handleMoveItem = useCallback(
+    async (itemId: string, newStatus: BoardColumnId) => {
+      setItemStatuses((prev) => {
+        const next = { ...prev, [itemId]: newStatus };
+        try {
+          localStorage.setItem('habitflow-item-statuses', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+
+      const item = unifiedItems.find((i) => i.id === itemId);
+      if (!item) return;
+
+      if (newStatus === 'done' && !item.done) {
+        if (item.type === 'habit') {
+          handleToggleHabit(item.id);
+        } else {
+          handleToggleTask(item.id, false);
+        }
+      } else if (newStatus !== 'done' && item.done) {
+        if (item.type === 'habit') {
+          handleToggleHabit(item.id);
+        } else {
+          handleToggleTask(item.id, true);
+        }
+      }
+
+      setPeekItem((prev) =>
+        prev && prev.id === itemId ? { ...prev, status: newStatus, done: newStatus === 'done' } : prev
+      );
+    },
+    [unifiedItems, handleToggleHabit, handleToggleTask]
+  );
+
+  // Quick inline add task to specific Notion column
+  const handleQuickAddTask = useCallback(
+    async (title: string, status: BoardColumnId) => {
+      const isDone = status === 'done';
+      const tempId = crypto.randomUUID();
+      const newTask: Task = {
+        id: tempId,
+        user_id: '',
+        title,
+        due_date: selectedDateStr,
+        due_time: null,
+        priority: 'medium',
+        email_reminder: true,
+        done: isDone,
+        done_at: isDone ? new Date().toISOString() : null,
+        created_at: new Date().toISOString(),
+      };
+
+      setTasks((prev) => [newTask, ...prev]);
+      setItemStatuses((prev) => {
+        const next = { ...prev, [tempId]: status };
+        try {
+          localStorage.setItem('habitflow-item-statuses', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+
+      await createTask({
+        title,
+        due_date: selectedDateStr,
+        priority: 'medium',
+        email_reminder: true,
+      });
+
+      router.refresh();
+    },
+    [selectedDateStr, router]
   );
 
   // Keyboard shortcuts (N = new item, Space = toggle)
@@ -469,13 +554,10 @@ export function TodayClient({
         }}
       />
 
-      {/* View Mode: Kanban Board */}
+      {/* View Mode: Kanban Board (4 Columns Notion Board) */}
       {activeView === 'board' && (
         <KanbanBoardView
           items={unifiedItems}
-          groupBy={boardGroupBy}
-          onToggleHabit={handleToggleHabit}
-          onToggleTask={handleToggleTask}
           onEditHabit={(h) => {
             setHabitToEdit(h);
             setIsHabitModalOpen(true);
@@ -491,14 +573,12 @@ export function TodayClient({
             setCustomTaskModalDate(selectedDateStr);
             setIsTaskModalOpen(true);
           }}
-          onAddHabit={() => {
-            setHabitToEdit(null);
-            setIsHabitModalOpen(true);
-          }}
           onOpenItem={(item) => {
             setPeekItem(item);
             setIsPeekOpen(true);
           }}
+          onMoveItem={handleMoveItem}
+          onQuickAddTask={handleQuickAddTask}
         />
       )}
 
@@ -738,6 +818,7 @@ export function TodayClient({
           }
         }}
         onDeleteTask={handleDeleteTask}
+        onMoveItem={handleMoveItem}
       />
     </div>
   );

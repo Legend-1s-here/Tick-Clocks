@@ -2,17 +2,20 @@
 
 import { useState } from 'react';
 import {
-  LayoutList,
-  Kanban,
-  Calendar,
+  Columns3,
   Table,
+  Calendar,
+  LayoutList,
   Search,
   X,
   SlidersHorizontal,
-  Plus,
   ChevronDown,
   Flame,
   CheckSquare,
+  Filter,
+  ArrowUpDown,
+  Zap,
+  Sparkles,
 } from 'lucide-react';
 
 export type ViewMode = 'list' | 'board' | 'calendar' | 'table';
@@ -40,25 +43,25 @@ export function ViewSwitcher({
   onSearchChange,
   filterType,
   onFilterTypeChange,
-  boardGroupBy = 'status',
-  onBoardGroupByChange,
   totalCount,
   onOpenNewTask,
   onOpenNewHabit,
 }: ViewSwitcherProps) {
   const [showNewDropdown, setShowNewDropdown] = useState(false);
+  const [showSearchInput, setShowSearchInput] = useState(Boolean(searchQuery));
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  const views: { id: ViewMode; label: string; icon: typeof LayoutList }[] = [
+  const views: { id: ViewMode; label: string; icon: typeof Columns3 }[] = [
+    { id: 'board', label: 'Board', icon: Columns3 },
     { id: 'table', label: 'Table', icon: Table },
-    { id: 'board', label: 'Board', icon: Kanban },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'list', label: 'List', icon: LayoutList },
   ];
 
   return (
-    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pb-3 border-b border-zinc-200/80 dark:border-zinc-800">
-      {/* Notion Database Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+    <div className="flex items-center justify-between gap-3 pb-3 border-b border-zinc-200/80 dark:border-zinc-800 select-none">
+      {/* Notion Database Views Tab (Left) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1">
         {views.map((v) => {
           const Icon = v.icon;
           const isActive = activeView === v.id;
@@ -67,94 +70,158 @@ export function ViewSwitcher({
               key={v.id}
               type="button"
               onClick={() => onViewChange(v.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                 isActive
-                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 font-semibold shadow-2xs'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40'
+                  ? 'bg-zinc-200/80 dark:bg-[#202020] text-zinc-900 dark:text-zinc-100 shadow-2xs'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40 font-medium'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400'}`} />
+              <Icon className="w-3.5 h-3.5 stroke-[2]" />
               <span>{v.label}</span>
+              {isActive && totalCount > 0 && (
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal">
+                  {totalCount}
+                </span>
+              )}
             </button>
           );
         })}
-
-        <div className="h-4 w-[1px] bg-zinc-200 dark:bg-zinc-800 mx-1" />
-
-        <span className="text-[11px] font-medium text-zinc-400 px-1 select-none">
-          {totalCount} item{totalCount === 1 ? '' : 's'}
-        </span>
       </div>
 
-      {/* Right Controls: Search, Filter, GroupBy & Notion "+ New" button */}
-      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-        {/* Search Input */}
-        <div className="relative flex-1 sm:w-44">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search..."
-            className="w-full pl-8 pr-7 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-          {searchQuery && (
+      {/* Notion Toolbar Actions (Right) */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {/* Filter Toggle */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowFilterDropdown((prev) => !prev)}
+            className={`p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer ${
+              filterType !== 'all' ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40' : ''
+            }`}
+            title="Filter database"
+          >
+            <Filter className="w-4 h-4 stroke-[1.8]" />
+          </button>
+
+          {showFilterDropdown && (
+            <div className="absolute right-0 top-full mt-1.5 w-40 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl z-50 p-1 text-xs">
+              <div className="px-2 py-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                Filter by
+              </div>
+              {(['all', 'habits', 'tasks', 'pending', 'completed'] as FilterType[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => {
+                    onFilterTypeChange(f);
+                    setShowFilterDropdown(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left capitalize transition-colors cursor-pointer ${
+                    filterType === f
+                      ? 'bg-zinc-100 dark:bg-zinc-800 font-semibold text-zinc-900 dark:text-zinc-100'
+                      : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
+                  }`}
+                >
+                  <span>{f}</span>
+                  {filterType === f && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sort Icon */}
+        <button
+          type="button"
+          onClick={() => {
+            // cycle quick view or inform user
+          }}
+          className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+          title="Sort database"
+        >
+          <ArrowUpDown className="w-4 h-4 stroke-[1.8]" />
+        </button>
+
+        {/* Zap / Automation Icon */}
+        <button
+          type="button"
+          className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+          title="Automations & Reminders active"
+        >
+          <Zap className="w-4 h-4 stroke-[1.8]" />
+        </button>
+
+        {/* AI / Sparkles Icon */}
+        <button
+          type="button"
+          className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+          title="AI Assistant"
+        >
+          <Sparkles className="w-4 h-4 stroke-[1.8]" />
+        </button>
+
+        {/* Search Icon & Input */}
+        <div className="relative flex items-center">
+          {showSearchInput ? (
+            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-[#202020] rounded-lg px-2 py-1 border border-zinc-200 dark:border-zinc-700">
+              <Search className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search..."
+                className="w-28 sm:w-36 bg-transparent text-xs text-zinc-900 dark:text-zinc-100 outline-none placeholder-zinc-400"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  onSearchChange('');
+                  setShowSearchInput(false);
+                }}
+                className="text-zinc-400 hover:text-zinc-200 p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
-              onClick={() => onSearchChange('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5"
+              onClick={() => setShowSearchInput(true)}
+              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+              title="Search"
             >
-              <X className="w-3 h-3" />
+              <Search className="w-4 h-4 stroke-[1.8]" />
             </button>
           )}
         </div>
 
-        {/* Filter Dropdown */}
-        <select
-          value={filterType}
-          onChange={(e) => onFilterTypeChange(e.target.value as FilterType)}
-          className="px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none cursor-pointer"
+        {/* Settings / Sliders Icon */}
+        <button
+          type="button"
+          className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+          title="View options"
         >
-          <option value="all">Filter: All</option>
-          <option value="habits">Habits Only</option>
-          <option value="tasks">Tasks Only</option>
-          <option value="pending">Incomplete</option>
-          <option value="completed">Completed</option>
-        </select>
+          <SlidersHorizontal className="w-4 h-4 stroke-[1.8]" />
+        </button>
 
-        {/* Board Group By (Only visible in Board view) */}
-        {activeView === 'board' && onBoardGroupByChange && (
-          <div className="flex items-center gap-1 text-xs text-zinc-500">
-            <SlidersHorizontal className="w-3 h-3 ml-1" />
-            <select
-              value={boardGroupBy}
-              onChange={(e) => onBoardGroupByChange(e.target.value as BoardGroupBy)}
-              className="px-2 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none cursor-pointer"
-            >
-              <option value="status">Status</option>
-              <option value="priority">Priority</option>
-            </select>
-          </div>
-        )}
-
-        {/* Notion Split "+ New" Button */}
+        {/* Notion Signature Blue "New ⌵" Button */}
         {(onOpenNewTask || onOpenNewHabit) && (
-          <div className="relative inline-flex items-center">
+          <div className="relative inline-flex items-center ml-1">
             <button
               type="button"
               onClick={onOpenNewTask}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-l-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-l-md bg-[#2383e2] hover:bg-[#1b70c4] text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
             >
-              <Plus className="w-3.5 h-3.5" />
               <span>New</span>
             </button>
             <button
               type="button"
               onClick={() => setShowNewDropdown((prev) => !prev)}
-              className="px-1.5 py-1.5 rounded-r-lg bg-indigo-700 hover:bg-indigo-800 text-white border-l border-indigo-500 text-xs transition-colors cursor-pointer shadow-xs"
+              className="px-1.5 py-1.5 rounded-r-md bg-[#2383e2] hover:bg-[#1b70c4] text-white border-l border-blue-400/40 text-xs transition-colors cursor-pointer shadow-xs"
               title="Add options"
             >
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown className="w-3.5 h-3.5" />
             </button>
 
             {/* Dropdown Menu */}
