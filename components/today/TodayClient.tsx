@@ -29,6 +29,8 @@ import { ViewSwitcher, ViewMode, FilterType, BoardGroupBy } from '@/components/v
 import { KanbanBoardView, UnifiedItem } from '@/components/views/KanbanBoardView';
 import { CalendarView } from '@/components/views/CalendarView';
 import { DatabaseTableView } from '@/components/views/DatabaseTableView';
+import { NotionPageHeader } from '@/components/views/NotionPageHeader';
+import { NotionPeekModal } from '@/components/views/NotionPeekModal';
 
 interface TodayClientProps {
   initialHabits: Habit[];
@@ -95,6 +97,8 @@ export function TodayClient({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [boardGroupBy, setBoardGroupBy] = useState<BoardGroupBy>('status');
+  const [peekItem, setPeekItem] = useState<UnifiedItem | null>(null);
+  const [isPeekOpen, setIsPeekOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -354,6 +358,23 @@ export function TodayClient({
 
   return (
     <div className="space-y-6">
+      {/* Notion Page Header (Cover, Icon, Title, Callout & Properties) */}
+      <NotionPageHeader
+        selectedDate={selectedDate}
+        userTimezone={userTimezone}
+        totalItems={totalItems}
+        completedItems={completedItems}
+        onOpenNewTask={() => {
+          setTaskToEdit(null);
+          setCustomTaskModalDate(selectedDateStr);
+          setIsTaskModalOpen(true);
+        }}
+        onOpenNewHabit={() => {
+          setHabitToEdit(null);
+          setIsHabitModalOpen(true);
+        }}
+      />
+
       {/* Date Navigation Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-2 border-b border-zinc-200/80 dark:border-zinc-800">
         <div className="flex items-center gap-2">
@@ -437,6 +458,15 @@ export function TodayClient({
         boardGroupBy={boardGroupBy}
         onBoardGroupByChange={setBoardGroupBy}
         totalCount={unifiedItems.length}
+        onOpenNewTask={() => {
+          setTaskToEdit(null);
+          setCustomTaskModalDate(selectedDateStr);
+          setIsTaskModalOpen(true);
+        }}
+        onOpenNewHabit={() => {
+          setHabitToEdit(null);
+          setIsHabitModalOpen(true);
+        }}
       />
 
       {/* View Mode: Kanban Board */}
@@ -464,6 +494,10 @@ export function TodayClient({
           onAddHabit={() => {
             setHabitToEdit(null);
             setIsHabitModalOpen(true);
+          }}
+          onOpenItem={(item) => {
+            setPeekItem(item);
+            setIsPeekOpen(true);
           }}
         />
       )}
@@ -502,6 +536,15 @@ export function TodayClient({
           }}
           onDeleteTask={handleDeleteTask}
           onArchiveHabit={handleArchiveHabit}
+          onOpenItem={(item) => {
+            setPeekItem(item);
+            setIsPeekOpen(true);
+          }}
+          onAddNewTask={() => {
+            setTaskToEdit(null);
+            setCustomTaskModalDate(selectedDateStr);
+            setIsTaskModalOpen(true);
+          }}
         />
       )}
 
@@ -670,6 +713,31 @@ export function TodayClient({
         habit={backfillHabit}
         logs={backfillHabit ? logs.filter((l) => l.habit_id === backfillHabit.id) : []}
         onToggleComplete={() => router.refresh()}
+      />
+
+      {/* Notion Page Peek Modal */}
+      <NotionPeekModal
+        item={peekItem}
+        isOpen={isPeekOpen}
+        onClose={() => {
+          setIsPeekOpen(false);
+          setPeekItem(null);
+        }}
+        onToggleHabit={handleToggleHabit}
+        onToggleTask={handleToggleTask}
+        onEditHabit={(u) => {
+          if (u.originalHabit) {
+            setHabitToEdit(u.originalHabit);
+            setIsHabitModalOpen(true);
+          }
+        }}
+        onEditTask={(u) => {
+          if (u.originalTask) {
+            setTaskToEdit(u.originalTask);
+            setIsTaskModalOpen(true);
+          }
+        }}
+        onDeleteTask={handleDeleteTask}
       />
     </div>
   );
