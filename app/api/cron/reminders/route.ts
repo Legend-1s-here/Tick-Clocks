@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getMatchingReminderSlots } from '@/lib/logic/reminders';
+import { isWithinReminderWindow } from '@/lib/logic/reminders';
 import { isHabitScheduledOnDate } from '@/lib/logic/streaks';
 import { renderReminderEmailHtml } from '@/lib/email/templates';
 import { sendEmail } from '@/lib/email/send';
 import { parseISO } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 function verifyCronSecret(request: Request): boolean {
   const expectedSecret = process.env.CRON_SECRET || 'deadstock-local-cron-secret-2026';
@@ -65,99 +66,152 @@ async function handleRemindersCron(request: Request) {
       if (!profile || !profile.email) continue;
 
       const userTimezone = profile.timezone || 'UTC';
-      const reminderTimes = setting.reminder_times || [];
+      let validTz = userTimezone;
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: userTimezone });
+      } catch {
+        validTz = 'UTC';
+      }
 
-      // Check which slots fall into the 15-minute window for this user
-      const { matchingSlots, localDate } = getMatchingReminderSlots(reminderTimes, userTimezone, now);
-
-      if (matchingSlots.length === 0) continue;
-
-      stats.matchingSlotsFound += matchingSlots.length;
+      const localDate = formatInTimeZone(now, validTz, 'yyyy-MM-dd');
       const localDateObj = parseISO(localDate);
 
-      for (const slot of matchingSlots) {
-        // Check if already sent for this slot today
-        const { data: existingLog } = await supabase
-          .from('reminder_log')
-          .select('id')
-          .eq('user_id', profile.id)
-          .eq('local_date', localDate)
-          .eq('slot', slot)
-          .maybeSingle();
+      // Fetch pending tasks due on or before today where email reminder is enabled
+      const { data: pendingTasks } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', profile.id)
+        .lte('due_date', localDate)
+        .eq('done', false)
+        .neq('email_reminder', false);
 
-        if (existingLog) {
-          stats.alreadyLogged++;
-          continue;
+      const tasksLeft = pendingTasks || [];
+
+      // Determine which reminder slots match right now
+      // 1. User general reminder slots (e.g. ['18:00', '21:00'])
+      const reminderTimes = setting.reminder_times || [];
+      const matchingGeneralSlots: string[] = [];
+      for (const slot of reminderTimes) {
+        const check = isWithinReminderWindow(slot, validTz, now);
+        if (check.isWithinWindow) {
+          matchingGeneralSlots.push(slot);
         }
+      }
 
-        // Fetch active habits where email reminder is enabled
-        const { data: habits } = await supabase
-          .from('habits')
-          .select('*')
-          .eq('user_id', profile.id)
-          .eq('archived', false)
-          .neq('email_reminder', false);
-
-        // Filter habits scheduled for today
-        const scheduledToday = (habits || []).filter((h) =>
-          isHabitScheduledOnDate(h, localDateObj)
-        );
-
-        // Fetch habit logs for today
-        const { data: todayLogs } = await supabase
-          .from('habit_logs')
-          .select('habit_id')
-          .eq('user_id', profile.id)
-          .eq('log_date', localDate);
-
-        const completedHabitIds = new Set((todayLogs || []).map((l) => l.habit_id));
-        const pendingHabits = scheduledToday.filter((h) => !completedHabitIds.has(h.id));
-
-        // Fetch pending tasks for today where email reminder is enabled
-        const { data: pendingTasks } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('user_id', profile.id)
-          .eq('due_date', localDate)
-          .eq('done', false)
-          .neq('email_reminder', false);
-
-        const tasksLeft = pendingTasks || [];
-
-        // If everything is complete, send nothing
-        if (pendingHabits.length === 0 && tasksLeft.length === 0) {
-          stats.skippedAllComplete++;
-          continue;
+      // 2. Specific due times from pending tasks due today
+      const matchingTaskSlots: { slotKey: string; task: typeof tasksLeft[0] }[] = [];
+      for (const task of tasksLeft) {
+        if (task.due_time) {
+          const check = isWithinReminderWindow(task.due_time, validTz, now);
+          if (check.isWithinWindow) {
+            matchingTaskSlots.push({
+              slotKey: `task-${task.id}`,
+              task,
+            });
+          }
         }
+      }
 
-        // Render email template
-        const { subject, html } = renderReminderEmailHtml({
-          userEmail: profile.email,
-          userId: profile.id,
-          dateStr: localDate,
-          pendingHabits,
-          pendingTasks: tasksLeft,
-          appUrl,
-        });
+      if (matchingGeneralSlots.length === 0 && matchingTaskSlots.length === 0) {
+        continue;
+      }
 
-        // Send email
-        const sendResult = await sendEmail({
-          to: profile.email,
-          subject,
-          html,
-        });
+      // Check which of these slots haven't been logged yet today
+      const allCandidateSlotKeys = [
+        ...matchingGeneralSlots,
+        ...matchingTaskSlots.map((m) => m.slotKey),
+      ];
 
-        if (sendResult.success) {
-          // Log into reminder_log only after successful delivery
+      const { data: existingLogs } = await supabase
+        .from('reminder_log')
+        .select('slot')
+        .eq('user_id', profile.id)
+        .eq('local_date', localDate)
+        .in('slot', allCandidateSlotKeys);
+
+      const existingSlotSet = new Set((existingLogs || []).map((l) => l.slot));
+      const unloggedSlots = allCandidateSlotKeys.filter((s) => !existingSlotSet.has(s));
+
+      if (unloggedSlots.length === 0) {
+        stats.alreadyLogged += allCandidateSlotKeys.length;
+        continue;
+      }
+
+      stats.matchingSlotsFound += unloggedSlots.length;
+
+      // Fetch active habits where email reminder is enabled
+      const { data: habits } = await supabase
+        .from('habits')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('archived', false)
+        .neq('email_reminder', false);
+
+      // Filter habits scheduled for today
+      const scheduledToday = (habits || []).filter((h) =>
+        isHabitScheduledOnDate(h, localDateObj)
+      );
+
+      // Fetch habit logs for today
+      const { data: todayLogs } = await supabase
+        .from('habit_logs')
+        .select('habit_id')
+        .eq('user_id', profile.id)
+        .eq('log_date', localDate);
+
+      const completedHabitIds = new Set((todayLogs || []).map((l) => l.habit_id));
+      const pendingHabits = scheduledToday.filter((h) => !completedHabitIds.has(h.id));
+
+      // If everything is complete, mark slots as logged so we don't re-trigger today
+      if (pendingHabits.length === 0 && tasksLeft.length === 0) {
+        stats.skippedAllComplete++;
+        for (const slot of unloggedSlots) {
           await supabase.from('reminder_log').insert({
             user_id: profile.id,
             local_date: localDate,
             slot,
           });
-          stats.emailsSent++;
-        } else {
-          stats.errors.push(`Failed sending to ${profile.email}: ${sendResult.error}`);
         }
+        continue;
+      }
+
+      // Determine appropriate subject line
+      let customSubject: string | undefined;
+      const unloggedTaskMatch = matchingTaskSlots.find((m) => unloggedSlots.includes(m.slotKey));
+      if (unloggedTaskMatch) {
+        customSubject = `⏰ Task Due: "${unloggedTaskMatch.task.title}" is scheduled now`;
+      }
+
+      // Render email template
+      const { subject, html } = renderReminderEmailHtml({
+        userEmail: profile.email,
+        userId: profile.id,
+        dateStr: localDate,
+        pendingHabits,
+        pendingTasks: tasksLeft,
+        appUrl,
+        customSubject,
+      });
+
+      // Send email via Resend
+      const sendResult = await sendEmail({
+        to: profile.email,
+        subject,
+        html,
+      });
+
+      if (sendResult.success) {
+        // Log all fulfilled slots into reminder_log only after successful delivery
+        for (const slot of unloggedSlots) {
+          await supabase.from('reminder_log').insert({
+            user_id: profile.id,
+            local_date: localDate,
+            slot,
+          });
+        }
+        stats.emailsSent++;
+      } else {
+        stats.errors.push(`Failed sending to ${profile.email}: ${sendResult.error}`);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'User reminder failed';

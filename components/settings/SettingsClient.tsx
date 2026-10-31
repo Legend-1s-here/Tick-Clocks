@@ -68,6 +68,20 @@ export function SettingsClient({ initialProfile, initialSettings }: SettingsClie
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Auto-detect browser timezone if profile is still on default UTC
+  useEffect(() => {
+    if (!initialProfile.timezone || initialProfile.timezone === 'UTC') {
+      try {
+        const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (detected && detected !== 'UTC') {
+          setTimezone(detected);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [initialProfile.timezone]);
+
   // Export State
   const [exporting, setExporting] = useState(false);
 

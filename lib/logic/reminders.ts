@@ -8,18 +8,19 @@ export interface ReminderWindowCheck {
 }
 
 /**
- * Checks whether the current moment falls within the 15-minute execution window of a target slot.
+ * Checks whether the current moment falls within the execution window of a target slot.
+ * Default window is 180 minutes (3 hours) to gracefully absorb GitHub Actions runner delays.
  *
  * @param slot e.g. "18:00" (HH:mm)
  * @param userTimezone IANA timezone string e.g. "America/New_York", "UTC", "Asia/Kolkata"
  * @param now Reference UTC date
- * @param windowMinutes Window duration in minutes (default 15 minutes)
+ * @param windowMinutes Window duration in minutes (default 180 minutes for delay resilience)
  */
 export function isWithinReminderWindow(
   slot: string,
   userTimezone: string,
   now: Date = new Date(),
-  windowMinutes: number = 15
+  windowMinutes: number = 180
 ): ReminderWindowCheck {
   // Safe fallback if timezone is invalid
   let validTz = userTimezone;

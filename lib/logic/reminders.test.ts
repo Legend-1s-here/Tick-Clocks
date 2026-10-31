@@ -55,4 +55,24 @@ describe('Reminder Window Logic', () => {
     expect(matchingSlots).toEqual(['18:00']);
     expect(localDate).toBe('2026-10-02');
   });
+
+  it('supports default resilient catch-up window (up to 180 min) for delayed triggers', () => {
+    // 45 minutes after slot time: 18:45
+    const now = new Date('2026-10-02T18:45:00Z');
+    const result = isWithinReminderWindow('18:00', 'UTC', now);
+
+    expect(result.isWithinWindow).toBe(true);
+    expect(result.minutesDiff).toBe(45);
+  });
+
+  it('correctly calculates Asia/Kolkata timezone (UTC+5:30)', () => {
+    // 15:35 UTC is 21:05 in Asia/Kolkata (+5:30)
+    const now = new Date('2026-10-02T15:35:00Z');
+    const result = isWithinReminderWindow('21:00', 'Asia/Kolkata', now);
+
+    expect(result.isWithinWindow).toBe(true);
+    expect(result.localTime).toBe('21:05');
+    expect(result.localDate).toBe('2026-10-02');
+    expect(result.minutesDiff).toBe(5);
+  });
 });

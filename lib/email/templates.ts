@@ -8,6 +8,7 @@ interface ReminderEmailProps {
   pendingHabits: Habit[];
   pendingTasks: Task[];
   appUrl: string;
+  customSubject?: string;
 }
 
 export function renderReminderEmailHtml({
@@ -17,9 +18,10 @@ export function renderReminderEmailHtml({
   pendingHabits,
   pendingTasks,
   appUrl,
+  customSubject,
 }: ReminderEmailProps): { subject: string; html: string } {
   const totalPending = pendingHabits.length + pendingTasks.length;
-  const subject = `⏰ You have ${totalPending} incomplete item${totalPending > 1 ? 's' : ''} left for today`;
+  const subject = customSubject || `⏰ You have ${totalPending} incomplete item${totalPending > 1 ? 's' : ''} left for today`;
 
   const habitItemsHtml = pendingHabits
     .map((habit) => {
