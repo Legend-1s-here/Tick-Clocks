@@ -25,6 +25,10 @@ import {
   Flame,
   CheckSquare,
 } from 'lucide-react';
+import { ViewSwitcher, ViewMode, FilterType, BoardGroupBy } from '@/components/views/ViewSwitcher';
+import { KanbanBoardView, UnifiedItem } from '@/components/views/KanbanBoardView';
+import { CalendarView } from '@/components/views/CalendarView';
+import { DatabaseTableView } from '@/components/views/DatabaseTableView';
 
 interface TodayClientProps {
   initialHabits: Habit[];
@@ -81,9 +85,36 @@ export function TodayClient({
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [customTaskModalDate, setCustomTaskModalDate] = useState<string | null>(null);
 
   const [isBackfillOpen, setIsBackfillOpen] = useState(false);
   const [backfillHabit, setBackfillHabit] = useState<Habit | null>(null);
+
+  // Notion-style Multi-View state
+  const [activeView, setActiveView] = useState<ViewMode>('list');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [boardGroupBy, setBoardGroupBy] = useState<BoardGroupBy>('status');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('habitflow-active-view') as ViewMode | null;
+      if (saved && ['list', 'board', 'calendar', 'table'].includes(saved)) {
+        setActiveView(saved);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleViewChange = (view: ViewMode) => {
+    setActiveView(view);
+    try {
+      localStorage.setItem('habitflow-active-view', view);
+    } catch {
+      // ignore
+    }
+  };
 
   // Filter habits scheduled for selectedDate
   const scheduledHabits = useMemo(() => {
@@ -155,6 +186,89 @@ export function TodayClient({
     },
     [completedHabitIdSet, selectedDateStr, router]
   );
+
+  // Toggle Habit for any calendar date
+  const handleToggleHabitForDate = useCallback(
+    async (habitId: string, dateStr: string) => {
+      const isAlreadyCompleted = logs.some(
+        (l) => l.habit_id === habitId && l.log_date === dateStr
+      );
+
+      if (isAlreadyCompleted) {
+        setLogs((prev) =>
+          prev.filter((l) => !(l.habit_id === habitId && l.log_date === dateStr))
+        );
+      } else {
+        const dummyLog: HabitLog = {
+          id: `temp-${Date.now()}`,
+          habit_id: habitId,
+          user_id: '',
+          log_date: dateStr,
+          completed_at: new Date().toISOString(),
+        };
+        setLogs((prev) => [...prev, dummyLog]);
+      }
+
+      await toggleHabitLog(habitId, dateStr);
+      router.refresh();
+    },
+    [logs, router]
+  );
+
+  // Unified items for multi-views (Board, Table, and filtered List)
+  const unifiedItems: UnifiedItem[] = useMemo(() => {
+    const habitItems: UnifiedItem[] = scheduledHabits.map((h) => {
+      const isDone = completedHabitIdSet.has(h.id);
+      return {
+        id: h.id,
+        type: 'habit',
+        title: h.title,
+        description: h.description,
+        category: h.category,
+        color: h.color,
+        done: isDone,
+        streak: streaksMap.get(h.id) || 0,
+        email_reminder: h.email_reminder !== false,
+        originalHabit: h,
+      };
+    });
+
+    const taskItems: UnifiedItem[] = scheduledTasks.map((t) => ({
+      id: t.id,
+      type: 'task',
+      title: t.title,
+      due_date: t.due_date,
+      due_time: t.due_time,
+      priority: t.priority,
+      done: t.done,
+      email_reminder: t.email_reminder !== false,
+      originalTask: t,
+    }));
+
+    let all = [...habitItems, ...taskItems];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      all = all.filter(
+        (i) =>
+          i.title.toLowerCase().includes(q) ||
+          (i.description && i.description.toLowerCase().includes(q)) ||
+          (i.category && i.category.toLowerCase().includes(q))
+      );
+    }
+
+    if (filterType === 'habits') {
+      all = all.filter((i) => i.type === 'habit');
+    } else if (filterType === 'tasks') {
+      all = all.filter((i) => i.type === 'task');
+    } else if (filterType === 'pending') {
+      all = all.filter((i) => !i.done);
+    } else if (filterType === 'completed') {
+      all = all.filter((i) => i.done);
+    }
+
+    return all;
+  }, [scheduledHabits, scheduledTasks, completedHabitIdSet, streaksMap, searchQuery, filterType]);
 
   // Optimistic Toggle Task Done
   const handleToggleTask = useCallback(
@@ -312,113 +426,198 @@ export function TodayClient({
       {/* Progress Ring / Daily Momentum */}
       <ProgressRing completed={completedItems} total={totalItems} />
 
-      {/* Habits Section */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-indigo-500" />
-            <h2 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 uppercase">
-              Habits ({completedHabitsCount}/{scheduledHabits.length})
-            </h2>
-          </div>
-          <span className="text-[11px] text-zinc-400">1-tap check-in</span>
+      {/* Notion-Style Multi-View Toolbar */}
+      <ViewSwitcher
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filterType={filterType}
+        onFilterTypeChange={setFilterType}
+        boardGroupBy={boardGroupBy}
+        onBoardGroupByChange={setBoardGroupBy}
+        totalCount={unifiedItems.length}
+      />
+
+      {/* View Mode: Kanban Board */}
+      {activeView === 'board' && (
+        <KanbanBoardView
+          items={unifiedItems}
+          groupBy={boardGroupBy}
+          onToggleHabit={handleToggleHabit}
+          onToggleTask={handleToggleTask}
+          onEditHabit={(h) => {
+            setHabitToEdit(h);
+            setIsHabitModalOpen(true);
+          }}
+          onEditTask={(t) => {
+            setTaskToEdit(t);
+            setIsTaskModalOpen(true);
+          }}
+          onDeleteTask={handleDeleteTask}
+          onArchiveHabit={handleArchiveHabit}
+          onAddTask={() => {
+            setTaskToEdit(null);
+            setCustomTaskModalDate(selectedDateStr);
+            setIsTaskModalOpen(true);
+          }}
+          onAddHabit={() => {
+            setHabitToEdit(null);
+            setIsHabitModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* View Mode: Calendar */}
+      {activeView === 'calendar' && (
+        <CalendarView
+          habits={habits}
+          tasks={tasks}
+          logs={logs}
+          selectedDate={selectedDate}
+          onSelectDate={(d) => setSelectedDate(d)}
+          onToggleHabit={handleToggleHabitForDate}
+          onToggleTask={handleToggleTask}
+          onAddTaskForDate={(dateStr) => {
+            setCustomTaskModalDate(dateStr);
+            setTaskToEdit(null);
+            setIsTaskModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* View Mode: Database Table */}
+      {activeView === 'table' && (
+        <DatabaseTableView
+          items={unifiedItems}
+          onToggleHabit={handleToggleHabit}
+          onToggleTask={handleToggleTask}
+          onEditHabit={(h) => {
+            setHabitToEdit(h);
+            setIsHabitModalOpen(true);
+          }}
+          onEditTask={(t) => {
+            setTaskToEdit(t);
+            setIsTaskModalOpen(true);
+          }}
+          onDeleteTask={handleDeleteTask}
+          onArchiveHabit={handleArchiveHabit}
+        />
+      )}
+
+      {/* View Mode: Classic List View */}
+      {activeView === 'list' && (
+        <div className="space-y-6">
+          {/* Habits Section */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-indigo-500" />
+                <h2 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 uppercase">
+                  Habits ({completedHabitsCount}/{scheduledHabits.length})
+                </h2>
+              </div>
+              <span className="text-[11px] text-zinc-400">1-tap check-in</span>
+            </div>
+
+            {scheduledHabits.length === 0 ? (
+              <div className="p-8 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center bg-zinc-50/50 dark:bg-zinc-900/20">
+                <Flame className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-2" />
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  No habits scheduled for this day
+                </p>
+                <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                  Start building a routine with daily or weekday habits.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHabitToEdit(null);
+                    setIsHabitModalOpen(true);
+                  }}
+                  className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create First Habit</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-2.5">
+                {scheduledHabits.map((habit) => (
+                  <HabitItem
+                    key={habit.id}
+                    habit={habit}
+                    isCompleted={completedHabitIdSet.has(habit.id)}
+                    currentStreak={streaksMap.get(habit.id) || 0}
+                    onToggle={handleToggleHabit}
+                    onEdit={(h) => {
+                      setHabitToEdit(h);
+                      setIsHabitModalOpen(true);
+                    }}
+                    onBackfill={(h) => {
+                      setBackfillHabit(h);
+                      setIsBackfillOpen(true);
+                    }}
+                    onArchive={handleArchiveHabit}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Daily Tasks Section */}
+          <section className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-emerald-500" />
+                <h2 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 uppercase">
+                  Daily Checklist ({completedTasksCount}/{scheduledTasks.length})
+                </h2>
+              </div>
+              <span className="text-[11px] text-zinc-400">One-off tasks</span>
+            </div>
+
+            {scheduledTasks.length === 0 ? (
+              <div className="p-8 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center bg-zinc-50/50 dark:bg-zinc-900/20">
+                <CheckSquare className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-2" />
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  No tasks due on this date
+                </p>
+                <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                  Add reminders and items you need to conquer today.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTaskToEdit(null);
+                    setCustomTaskModalDate(selectedDateStr);
+                    setIsTaskModalOpen(true);
+                  }}
+                  className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add a Task</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-2.5">
+                {scheduledTasks.map((task) => (
+                  <TaskItem
+                    key={task.id}
+                    task={task}
+                    onToggle={handleToggleTask}
+                    onEdit={(t) => {
+                      setTaskToEdit(t);
+                      setIsTaskModalOpen(true);
+                    }}
+                    onDelete={handleDeleteTask}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
-
-        {scheduledHabits.length === 0 ? (
-          <div className="p-8 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center bg-zinc-50/50 dark:bg-zinc-900/20">
-            <Flame className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-2" />
-            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              No habits scheduled for this day
-            </p>
-            <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-              Start building a routine with daily or weekday habits.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setHabitToEdit(null);
-                setIsHabitModalOpen(true);
-              }}
-              className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create First Habit</span>
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-2.5">
-            {scheduledHabits.map((habit) => (
-              <HabitItem
-                key={habit.id}
-                habit={habit}
-                isCompleted={completedHabitIdSet.has(habit.id)}
-                currentStreak={streaksMap.get(habit.id) || 0}
-                onToggle={handleToggleHabit}
-                onEdit={(h) => {
-                  setHabitToEdit(h);
-                  setIsHabitModalOpen(true);
-                }}
-                onBackfill={(h) => {
-                  setBackfillHabit(h);
-                  setIsBackfillOpen(true);
-                }}
-                onArchive={handleArchiveHabit}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Daily Tasks Section */}
-      <section className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckSquare className="w-4 h-4 text-emerald-500" />
-            <h2 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 uppercase">
-              Daily Checklist ({completedTasksCount}/{scheduledTasks.length})
-            </h2>
-          </div>
-          <span className="text-[11px] text-zinc-400">One-off tasks</span>
-        </div>
-
-        {scheduledTasks.length === 0 ? (
-          <div className="p-8 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center bg-zinc-50/50 dark:bg-zinc-900/20">
-            <CheckSquare className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-2" />
-            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              No tasks due on this date
-            </p>
-            <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-              Add reminders and items you need to conquer today.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setTaskToEdit(null);
-                setIsTaskModalOpen(true);
-              }}
-              className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add a Task</span>
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-2.5">
-            {scheduledTasks.map((task) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={handleToggleTask}
-                onEdit={(t) => {
-                  setTaskToEdit(t);
-                  setIsTaskModalOpen(true);
-                }}
-                onDelete={handleDeleteTask}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      )}
 
       {/* Keyboard Shortcuts Hint Bar */}
       <div className="hidden sm:flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-100/60 dark:bg-zinc-900/60 border border-zinc-200/50 dark:border-zinc-800 text-[11px] text-zinc-400">
@@ -455,8 +654,9 @@ export function TodayClient({
         onClose={() => {
           setIsTaskModalOpen(false);
           setTaskToEdit(null);
+          setCustomTaskModalDate(null);
         }}
-        defaultDate={selectedDateStr}
+        defaultDate={customTaskModalDate || selectedDateStr}
         taskToEdit={taskToEdit}
         onSuccess={() => router.refresh()}
       />
